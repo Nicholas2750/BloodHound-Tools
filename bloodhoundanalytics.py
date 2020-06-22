@@ -1,6 +1,6 @@
 from openpyxl import Workbook, styles
 from openpyxl.utils import get_column_letter
-from neo4j.v1 import GraphDatabase
+from neo4j import GraphDatabase
 import cmd
 import sys
 from timeit import default_timer as timer
