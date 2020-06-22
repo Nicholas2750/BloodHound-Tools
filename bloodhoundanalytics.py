@@ -14,14 +14,14 @@ from timeit import default_timer as timer
 
 class Messages(object):
 	def title(self):
-		print "================================================================"
-		print " BloodHound Analytics Generator"
-		print "   connect - connect to database"
-		print "   dbconfig - configure database settings"
-		print "   changedomain - change domain for analysis"
-		print "   startanalysis - start analysis for specified domain"
-		print "   changefilename - change output filename"
-		print "================================================================"
+		print("================================================================")
+		print(" BloodHound Analytics Generator")
+		print("   connect - connect to database")
+		print("   dbconfig - configure database settings")
+		print("   changedomain - change domain for analysis")
+		print("   startanalysis - start analysis for specified domain")
+		print("   changefilename - change output filename")
+		print("================================================================")
 
 	def input_default(self, prompt, default):
 		return raw_input("%s [%s] " % (prompt, default)) or default
@@ -52,7 +52,7 @@ class FrontPage(object):
 		for f in func_list:
 			s = timer()
 			f(sheet)
-			print "{} completed in {}s".format(f.__name__, timer() - s)
+			print("{} completed in {}s".format(f.__name__, timer() - s))
 
 	def create_node_statistics(self, sheet):
 		session = self.driver.session()
@@ -188,7 +188,7 @@ class LowHangingFruit(object):
 		for f in func_list:
 			s = timer()
 			f(sheet)
-			print "{} completed in {}s".format(f.__name__, timer() - s)
+			print("{} completed in {}s".format(f.__name__, timer() - s))
 
 	def domain_user_admin(self, sheet):
 		list_query = """MATCH (g:Group {domain:{domain}})
@@ -700,7 +700,7 @@ class CriticalAssets(object):
 		for f in func_list:
 			s = timer()
 			f(sheet)
-			print "{} completed in {}s".format(f.__name__, timer() - s)
+			print("{} completed in {}s".format(f.__name__, timer() - s))
 
 	def admins_on_dc(self, sheet):
 		list_query = """MATCH (g:Group {domain:{domain}})
@@ -1012,7 +1012,7 @@ class CrossDomain(object):
 		for f in func_list:
 			s = timer()
 			f(sheet)
-			print "{} completed in {}s".format(f.__name__, timer() - s)
+			print("{} completed in {}s".format(f.__name__, timer() - s))
 	
 	def foreign_admins(self, sheet):
 		list_query = """MATCH (c:Computer {domain:{domain}})
@@ -1092,8 +1092,8 @@ class MainMenu(cmd.Cmd):
 		self.num_nodes = 500
 		self.filename = "BloodHoundAnalytics.xlsx"
 		if (len(sys.argv) < 2):
-			print "No domain specified."
-			print "Usage: python {} DOMAINNAME".format(sys.argv[0])
+			print("No domain specified.")
+			print("Usage: python {} DOMAINNAME".format(sys.argv[0]))
 			sys.exit()
 		self.domain = sys.argv[1].upper()
 		self.domain_validated = False
@@ -1102,14 +1102,14 @@ class MainMenu(cmd.Cmd):
 
 	def do_changefilename(self, args):
 		if args == "":
-			print "No filename specified"
+			print("No filename specified")
 			return
 		self.filename = args
-		print "Change filename to {}".format(self.filename)
+		print("Change filename to {}".format(self.filename))
 
 	def do_changedomain(self, args):
 		if args == "":
-			print "No domain specified"
+			print("No domain specified")
 			return
 		self.domain_validated = False
 		self.domain = args.upper()
@@ -1127,23 +1127,23 @@ class MainMenu(cmd.Cmd):
 
 	def do_dbconfig(self, args):
 		"Configure connection settings to the neo4j database"
-		print "Current Settings:"
-		print "DB Url: {}".format(self.url)
-		print "DB Username: {}".format(self.username)
-		print "DB Password: {}".format(self.password)
-		print ""
+		print("Current Settings:")
+		print("DB Url: {}".format(self.url))
+		print("DB Username: {}".format(self.username))
+		print("DB Password: {}".format(self.password))
+		print("")
 		self.url = self.m.input_default("Enter DB URL", self.url)
 		self.username = self.m.input_default(
 			"Enter DB Username", self.username)
 		self.password = self.m.input_default(
 			"Enter DB Password", self.password)
-		print ""
-		print "New Settings:"
-		print "DB Url: {}".format(self.url)
-		print "DB Username: {}".format(self.username)
-		print "DB Password: {}".format(self.password)
-		print ""
-		print "Testing DB Connection"
+		print("")
+		print("New Settings:")
+		print("DB Url: {}".format(self.url))
+		print("DB Username: {}".format(self.username))
+		print("DB Password: {}".format(self.password))
+		print("")
+		print("Testing DB Connection")
 		self.test_db_conn()
 
 	def do_exit(self, args):
@@ -1160,59 +1160,59 @@ class MainMenu(cmd.Cmd):
 			self.driver = GraphDatabase.driver(
 				self.url, auth=(self.username, self.password))
 			self.connected = True
-			print "Database Connection Successful!"
+			print("Database Connection Successful!")
 			self.validate_domain()
 		except Exception as e:
-			print e
+			print(e)
 			self.connected = False
-			print "Database Connection Failed. Check your settings."
+			print("Database Connection Failed. Check your settings.")
 
 	def validate_domain(self):
 		if not self.connected:
-			print "Cant validate domain. Connect using connect first"
+			print("Cant validate domain. Connect using connect first")
 			return
 		
-		print "Validating Selected Domain"
+		print("Validating Selected Domain")
 		session = self.driver.session()
 		for result in session.run("MATCH (n {domain:{domain}}) RETURN COUNT(n)", domain=self.domain):
 			if (int(result[0]) > 0):
-				print "Domain {domain} validated!".format(domain=self.domain)
+				print("Domain {domain} validated!".format(domain=self.domain))
 				self.domain_validated = True
 				self.create_workbook()
 				self.create_analytics()
 			else:
-				print "Invalid domain specified, use changedomain to pick a new one"
+				print("Invalid domain specified, use changedomain to pick a new one")
 	
 	def do_startanalysis(self, args):
 		if not self.connected:
-			print "Not connected to database. Use connect command"
+			print("Not connected to database. Use connect command")
 			return
 		
 		if not self.domain_validated:
-			print "Invalid domain or not validated. Use changedomain command"
+			print("Invalid domain or not validated. Use changedomain command")
 			return
 		
-		print "----------------------------------"
-		print "Generating Front Page"
-		print "----------------------------------"
-		print ""
+		print("----------------------------------")
+		print("Generating Front Page")
+		print("----------------------------------")
+		print("")
 		self.front.do_front_page_analysis()
-		print "----------------------------------"
-		print "Generating Critical Assets Page"
-		print "----------------------------------"
-		print ""
+		print("----------------------------------")
+		print("Generating Critical Assets Page")
+		print("----------------------------------")
+		print("")
 		self.crit.do_critical_asset_analysis()
-		print "----------------------------------"
-		print "Generating Low Hanging Fruit Page"
-		print "----------------------------------"
-		print ""
+		print("----------------------------------")
+		print("Generating Low Hanging Fruit Page")
+		print("----------------------------------")
+		print("")
 		self.low.do_low_hanging_fruit_analysis()
-		print "----------------------------------"
-		print "Generating Cross Domain Page"
-		print "----------------------------------"
-		print ""
+		print("----------------------------------")
+		print("Generating Cross Domain Page")
+		print("----------------------------------")
+		print("")
 		self.cross.do_cross_domain_analysis()
-		print "Analytics Complete! Saving workbook to {}".format(self.filename)
+		print("Analytics Complete! Saving workbook to {}".format(self.filename))
 		self.save_workbook()
 
 	def create_analytics(self):
@@ -1251,5 +1251,5 @@ if __name__ == '__main__':
 	try:
 		MainMenu().cmdloop()
 	except KeyboardInterrupt:
-		print "Exiting"
+		print("Exiting")
 		sys.exit()
