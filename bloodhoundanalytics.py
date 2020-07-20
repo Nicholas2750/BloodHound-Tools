@@ -56,15 +56,15 @@ class FrontPage(object):
 
 	def create_node_statistics(self, sheet):
 		session = self.driver.session()
-		for result in session.run("MATCH (n:User {domain:{domain}}) RETURN count(n)", domain=self.domain):
+		for result in session.run("MATCH (n:User {domain:$domain}) RETURN count(n)", domain=self.domain):
 			self.write_single_cell(
 				sheet, 2, 1, "Users: {:,}".format(result[0]))
 
-		for result in session.run("MATCH (n:Group {domain:{domain}}) RETURN count(n)", domain=self.domain):
+		for result in session.run("MATCH (n:Group {domain:$domain}) RETURN count(n)", domain=self.domain):
 			self.write_single_cell(
 				sheet, 3, 1, "Groups: {:,}".format(result[0]))
 
-		for result in session.run("MATCH (n:Computer {domain:{domain}}) RETURN count(n)", domain=self.domain):
+		for result in session.run("MATCH (n:Computer {domain:$domain}) RETURN count(n)", domain=self.domain):
 			self.write_single_cell(
 				sheet, 4, 1, "Computers: {:,}".format(result[0]))
 
@@ -84,15 +84,15 @@ class FrontPage(object):
 
 	def create_edge_statistics(self, sheet):
 		session = self.driver.session()
-		for result in session.run("MATCH ()-[r:MemberOf]->({domain:{domain}}) RETURN count(r)", domain=self.domain):
+		for result in session.run("MATCH ()-[r:MemberOf]->({domain:$domain}) RETURN count(r)", domain=self.domain):
 			self.write_single_cell(
 				sheet, 2, 2, "MemberOf: {:,}".format(result[0]))
 
-		for result in session.run("MATCH ()-[r:AdminTo]->({domain:{domain}}) RETURN count(r)", domain=self.domain):
+		for result in session.run("MATCH ()-[r:AdminTo]->({domain:$domain}) RETURN count(r)", domain=self.domain):
 			self.write_single_cell(
 				sheet, 3, 2, "AdminTo: {:,}".format(result[0]))
 
-		for result in session.run("MATCH ()-[r:HasSession]->({domain:{domain}}) RETURN count(r)", domain=self.domain):
+		for result in session.run("MATCH ()-[r:HasSession]->({domain:$domain}) RETURN count(r)", domain=self.domain):
 			self.write_single_cell(
 				sheet, 4, 2, "HasSession: {:,}".format(result[0]))
 
@@ -100,7 +100,7 @@ class FrontPage(object):
 			self.write_single_cell(
 				sheet, 5, 2, "GpLinks: {:,}".format(result[0]))
 
-		for result in session.run("MATCH ()-[r {isacl:true}]->({domain:{domain}}) RETURN count(r)", domain=self.domain):
+		for result in session.run("MATCH ()-[r {isacl:true}]->({domain:$domain}) RETURN count(r)", domain=self.domain):
 			self.write_single_cell(
 				sheet, 6, 2, "ACLs: {:,}".format(result[0]))
 		session.close()
@@ -111,27 +111,27 @@ class FrontPage(object):
 		computer_session_pct = 0
 		user_session_pct = 0
 		
-		query = """MATCH (n)-[:AdminTo]->(c:Computer {domain:{domain}})
+		query = """MATCH (n)-[:AdminTo]->(c:Computer {domain:$domain})
 					WITH COUNT(DISTINCT(c)) as computersWithAdminsCount
-					MATCH (c2:Computer {domain:{domain}})
-					RETURN toInt(100 * (toFloat(computersWithAdminsCount) / COUNT(c2)))
+					MATCH (c2:Computer {domain:$domain})
+					RETURN toInteger(100 * (toFloat(computersWithAdminsCount) / COUNT(c2)))
 					"""
 		for result in session.run(query, domain=self.domain):
 			computer_local_admin_pct = result[0]
 		
-		query = """MATCH (c:Computer {domain:{domain}})-[:HasSession]->()
+		query = """MATCH (c:Computer {domain:$domain})-[:HasSession]->()
 					WITH COUNT(DISTINCT(c)) as computersWithSessions
-					MATCH (c2:Computer {domain:{domain}})
-					RETURN toInt(100 * (toFloat(computersWithSessions) / COUNT(c2)))
+					MATCH (c2:Computer {domain:$domain})
+					RETURN toInteger(100 * (toFloat(computersWithSessions) / COUNT(c2)))
 					"""
 		
 		for result in session.run(query, domain=self.domain):
 			computer_session_pct = result[0]
 
-		query = """MATCH ()-[:HasSession]->(u:User {domain:{domain}})
+		query = """MATCH ()-[:HasSession]->(u:User {domain:$domain})
 					WITH COUNT(DISTINCT(u)) as usersWithSessions
-					MATCH (u2:User {domain:{domain},enabled:true})
-					RETURN toInt(100 * (toFloat(usersWithSessions) / COUNT(u2)))
+					MATCH (u2:User {domain:$domain,enabled:true})
+					RETURN toInteger(100 * (toFloat(usersWithSessions) / COUNT(u2)))
 					"""
 		
 		for result in session.run(query, domain=self.domain):
@@ -157,7 +157,7 @@ class LowHangingFruit(object):
 		c = sheet.cell(offset, self.col_count)
 		c.font = font
 		sheet.cell(offset, self.col_count, value=title.format(count))
-		for i in xrange(0, count):
+		for i in range(0, count):
 			sheet.cell(i+offset+1, self.col_count, value=results[i])
 		self.col_count += 1
 
@@ -191,7 +191,7 @@ class LowHangingFruit(object):
 			print("{} completed in {}s".format(f.__name__, timer() - s))
 
 	def domain_user_admin(self, sheet):
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 					WHERE g.objectsid ENDS WITH "-513"
 					OPTIONAL MATCH (g)-[:AdminTo]->(c1)
 					OPTIONAL MATCH (g)-[:MemberOf*1..]->(:Group)-[:AdminTo]->(c2)
@@ -211,7 +211,7 @@ class LowHangingFruit(object):
 			sheet, "Domain Users with Local Admin: {}", results)
 
 	def everyone_admin(self, sheet):
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 						WHERE g.objectsid = "S-1-1-0"
 						OPTIONAL MATCH (g)-[:AdminTo]->(c1)
 						OPTIONAL MATCH (g)-[:MemberOf*1..]->(:Group)-[:AdminTo]->(c2)
@@ -231,7 +231,7 @@ class LowHangingFruit(object):
 
 	def authenticated_users_admin(self, sheet):
 
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 						WHERE g.objectsid = "S-1-5-11"
 						OPTIONAL MATCH (g)-[:AdminTo]->(c1)
 						OPTIONAL MATCH (g)-[:MemberOf*1..]->(:Group)-[:AdminTo]->(c2)
@@ -252,7 +252,7 @@ class LowHangingFruit(object):
 
 	def domain_users_control(self, sheet):
 
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 						WHERE g.objectsid ENDS WITH "-513"
 						OPTIONAL MATCH (g)-[{isacl:true}]->(n)
 						OPTIONAL MATCH (g)-[:MemberOf*1..]->(:Group)-[{isacl:true}]->(m)
@@ -274,7 +274,7 @@ class LowHangingFruit(object):
 
 	def everyone_control(self, sheet):
 
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 						WHERE g.objectsid = 'S-1-1-0'
 						OPTIONAL MATCH (g)-[{isacl:true}]->(n)
 						OPTIONAL MATCH (g)-[:MemberOf*1..]->(:Group)-[{isacl:true}]->(m)
@@ -296,7 +296,7 @@ class LowHangingFruit(object):
 
 	def authenticated_users_control(self, sheet):
 
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 						WHERE g.objectsid = 'S-1-5-11'
 						OPTIONAL MATCH (g)-[{isacl:true}]->(n)
 						OPTIONAL MATCH (g)-[:MemberOf*1..]->(:Group)-[{isacl:true}]->(m)
@@ -318,7 +318,7 @@ class LowHangingFruit(object):
 
 	def domain_users_rdp(self, sheet):
 
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 						WHERE g.objectsid ENDS WITH "-513"
 						OPTIONAL MATCH (g)-[:CanRDP]->(c1)
 						OPTIONAL MATCH (g)-[:MemberOf*1..]->(:Group)-[:CanRDP]->(c2)
@@ -339,7 +339,7 @@ class LowHangingFruit(object):
 
 	def everyone_rdp(self, sheet):
 
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 						WHERE g.objectsid = "S-1-1-0"
 						OPTIONAL MATCH (g)-[:CanRDP]->(c1)
 						OPTIONAL MATCH (g)-[:MemberOf*1..]->(:Group)-[:CanRDP]->(c2)
@@ -359,7 +359,7 @@ class LowHangingFruit(object):
 
 	def authenticated_users_rdp(self, sheet):
 
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 						WHERE g.objectsid = "S-1-5-11"
 						OPTIONAL MATCH (g)-[:CanRDP]->(c1)
 						OPTIONAL MATCH (g)-[:MemberOf*1..]->(:Group)-[:CanRDP]->(c2)
@@ -380,7 +380,7 @@ class LowHangingFruit(object):
 
 	def domain_users_dcom(self, sheet):
 
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 						WHERE g.objectsid ENDS WITH "-513"
 						OPTIONAL MATCH (g)-[:ExecuteDCOM]->(c1)
 						OPTIONAL MATCH (g)-[:MemberOf*1..]->(:Group)-[:ExecuteDCOM]->(c2)
@@ -401,7 +401,7 @@ class LowHangingFruit(object):
 
 	def everyone_dcom(self, sheet):
 
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 						WHERE g.objectsid = "S-1-1-0"
 						OPTIONAL MATCH (g)-[:ExecuteDCOM]->(c1)
 						OPTIONAL MATCH (g)-[:MemberOf*1..]->(:Group)-[:ExecuteDCOM]->(c2)
@@ -422,7 +422,7 @@ class LowHangingFruit(object):
 
 	def authenticated_users_dcom(self, sheet):
 
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 						WHERE g.objectsid = "S-1-5-11"
 						OPTIONAL MATCH (g)-[:ExecuteDCOM]->(c1)
 						OPTIONAL MATCH (g)-[:MemberOf*1..]->(:Group)-[:ExecuteDCOM]->(c2)
@@ -442,9 +442,9 @@ class LowHangingFruit(object):
 			sheet, "Domain Users with DCOM Rights: {}", results)
 
 	def shortest_acl_path_domain_users(self, sheet):
-		count_query = """MATCH (g1:Group {domain:{domain}})
+		count_query = """MATCH (g1:Group {domain:$domain})
 						WHERE g1.objectsid ENDS WITH "-513"
-						MATCH (g2:Group {domain:{domain}})
+						MATCH (g2:Group {domain:$domain})
 						WHERE g2.objectsid ENDS WITH "-512"
 						MATCH p = shortestPath((g1)-[:Owns|AllExtendedRights|ForceChangePassword|GenericAll|GenericWrite|WriteDacl|WriteOwner*1..]->(g2))
 						RETURN LENGTH(p)
@@ -460,9 +460,9 @@ class LowHangingFruit(object):
 			sheet, 2, 1, "Shortest ACL Path Length: {}".format(count))
 
 	def shortest_derivative_path_domain_users(self, sheet):
-		count_query = """MATCH (g1:Group {domain:{domain}})
+		count_query = """MATCH (g1:Group {domain:$domain})
 						WHERE g1.objectsid ENDS WITH "-513"
-						MATCH (g2:Group {domain:{domain}})
+						MATCH (g2:Group {domain:$domain})
 						WHERE g2.objectsid ENDS WITH "-512"
 						MATCH p = shortestPath((g1)-[:AdminTo|HasSession|MemberOf*1..]->(g2))
 						RETURN LENGTH(p)
@@ -478,9 +478,9 @@ class LowHangingFruit(object):
 			sheet, 3, 1, "Shortest Derivative Path Length: {}".format(count))
 
 	def shortest_hybrid_path_domain_users(self, sheet):
-		count_query = """MATCH (g1:Group {domain:{domain}})
+		count_query = """MATCH (g1:Group {domain:$domain})
 						WHERE g1.objectsid ENDS WITH "-513"
-						MATCH (g2:Group {domain:{domain}})
+						MATCH (g2:Group {domain:$domain})
 						WHERE g2.objectsid ENDS WITH "-512"
 						MATCH p = shortestPath((g1)-[r*1..]->(g2))
 						WHERE NONE(rel in r WHERE type(rel)="GetChanges")
@@ -499,9 +499,9 @@ class LowHangingFruit(object):
 			sheet, 4, 1, "Shortest Hybrid Path Length: {}".format(count))
 
 	def shortest_acl_path_everyone(self, sheet):
-		count_query = """MATCH (g1:Group {domain:{domain}})
+		count_query = """MATCH (g1:Group {domain:$domain})
 						WHERE g1.objectsid = 'S-1-1-0'
-						MATCH (g2:Group {domain:{domain}})
+						MATCH (g2:Group {domain:$domain})
 						WHERE g2.objectsid ENDS WITH "-512"
 						MATCH p = shortestPath((g1)-[:Owns|AllExtendedRights|ForceChangePassword|GenericAll|GenericWrite|WriteDacl|WriteOwner*1..]->(g2))
 						RETURN LENGTH(p)
@@ -517,9 +517,9 @@ class LowHangingFruit(object):
 			sheet, 2, 2, "Shortest ACL Path Length: {}".format(count))
 
 	def shortest_derivative_path_everyone(self, sheet):
-		count_query = """MATCH (g1:Group {domain:{domain}})
+		count_query = """MATCH (g1:Group {domain:$domain})
 						WHERE g1.objectsid = 'S-1-1-0'
-						MATCH (g2:Group {domain:{domain}})
+						MATCH (g2:Group {domain:$domain})
 						WHERE g2.objectsid ENDS WITH "-512"
 						MATCH p = shortestPath((g1)-[:AdminTo|HasSession|MemberOf*1..]->(g2))
 						RETURN LENGTH(p)
@@ -535,9 +535,9 @@ class LowHangingFruit(object):
 			sheet, 3, 2, "Shortest Derivative Path Length: {}".format(count))
 
 	def shortest_hybrid_path_everyone(self, sheet):
-		count_query = """MATCH (g1:Group {domain:{domain}})
+		count_query = """MATCH (g1:Group {domain:$domain})
 						WHERE g1.objectsid = 'S-1-1-0'
-						MATCH (g2:Group {domain:{domain}})
+						MATCH (g2:Group {domain:$domain})
 						WHERE g2.objectsid ENDS WITH "-512"
 						MATCH p = shortestPath((g1)-[r*1..]->(g2))
 						WHERE NONE(rel in r WHERE type(rel)="GetChanges")
@@ -556,9 +556,9 @@ class LowHangingFruit(object):
 			sheet, 4, 2, "Shortest Hybrid Path Length: {}".format(count))
 
 	def shortest_acl_path_auth_users(self, sheet):
-		count_query = """MATCH (g1:Group {domain:{domain}})
+		count_query = """MATCH (g1:Group {domain:$domain})
 						WHERE g1.objectsid = 'S-1-5-11'
-						MATCH (g2:Group {domain:{domain}})
+						MATCH (g2:Group {domain:$domain})
 						WHERE g2.objectsid ENDS WITH "-512"
 						MATCH p = shortestPath((g1)-[:Owns|AllExtendedRights|ForceChangePassword|GenericAll|GenericWrite|WriteDacl|WriteOwner*1..]->(g2))
 						RETURN LENGTH(p)
@@ -574,9 +574,9 @@ class LowHangingFruit(object):
 			sheet, 2, 3, "Shortest ACL Path Length: {}".format(count))
 
 	def shortest_derivative_path_auth_users(self, sheet):
-		count_query = """MATCH (g1:Group {domain:{domain}})
+		count_query = """MATCH (g1:Group {domain:$domain})
 						WHERE g1.objectsid = 'S-1-5-11'
-						MATCH (g2:Group {domain:{domain}})
+						MATCH (g2:Group {domain:$domain})
 						WHERE g2.objectsid ENDS WITH "-512"
 						MATCH p = shortestPath((g1)-[:AdminTo|HasSession|MemberOf*1..]->(g2))
 						RETURN LENGTH(p)
@@ -592,9 +592,9 @@ class LowHangingFruit(object):
 			sheet, 3, 3, "Shortest Derivative Path Length: {}".format(count))
 
 	def shortest_hybrid_path_auth_users(self, sheet):
-		count_query = """MATCH (g1:Group {domain:{domain}})
+		count_query = """MATCH (g1:Group {domain:$domain})
 						WHERE g1.objectsid = 'S-1-5-11'
-						MATCH (g2:Group {domain:{domain}})
+						MATCH (g2:Group {domain:$domain})
 						WHERE g2.objectsid ENDS WITH "-512"
 						MATCH p = shortestPath((g1)-[r*1..]->(g2))
 						WHERE NONE(rel in r WHERE type(rel)="GetChanges")
@@ -613,8 +613,8 @@ class LowHangingFruit(object):
 			sheet, 4, 3, "Shortest Hybrid Path Length: {}".format(count))
 
 	def kerberoastable_path_len(self, sheet):
-		list_query = """MATCH (u:User {domain:{domain},hasspn:true})
-						MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (u:User {domain:$domain,hasspn:true})
+						MATCH (g:Group {domain:$domain})
 						WHERE g.objectsid ENDS WITH "-512" AND NOT u.name STARTS WITH "KRBTGT@"
 						MATCH p = shortestPath((u)-[*1..]->(g))
 						RETURN u.name,LENGTH(p)
@@ -632,8 +632,8 @@ class LowHangingFruit(object):
 			sheet, "Kerberoastable User to DA Path Length", results)
 
 	def asreproastable_path_len(self, sheet):
-		list_query = """MATCH (u:User {domain:{domain},dontreqpreauth:True})
-						MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (u:User {domain:$domain,dontreqpreauth:True})
+						MATCH (g:Group {domain:$domain})
 						WHERE g.objectsid ENDS WITH "-512" AND NOT u.name STARTS WITH "KRBTGT@"
 						MATCH p = shortestPath((u)-[*1..]->(g))
 						RETURN u.name,LENGTH(p)
@@ -651,7 +651,7 @@ class LowHangingFruit(object):
 			sheet, "ASReproastable User to DA Path Length", results)
 	
 	def high_admin_comps(self, sheet):
-		list_query = """MATCH (c:Computer {domain:{domain}})
+		list_query = """MATCH (c:Computer {domain:$domain})
 						OPTIONAL MATCH (n)-[:AdminTo]->(c)
 						OPTIONAL MATCH (m)-[:MemberOf*1..]->(:Group)-[:AdminTo]->(c)
 						WITH COLLECT(n) + COLLECT(m) as tempVar,c
@@ -687,7 +687,7 @@ class CriticalAssets(object):
 		c = sheet.cell(offset, self.col_count)
 		c.font = font
 		sheet.cell(offset, self.col_count, value=title.format(count))
-		for i in xrange(0, count):
+		for i in range(0, count):
 			sheet.cell(i+offset+1, self.col_count, value=results[i])
 		self.col_count += 1
 
@@ -703,7 +703,7 @@ class CriticalAssets(object):
 			print("{} completed in {}s".format(f.__name__, timer() - s))
 
 	def admins_on_dc(self, sheet):
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 					WHERE g.objectsid ENDS WITH "-516"
 					MATCH (c:Computer)-[:MemberOf*1..]->(g)
 					OPTIONAL MATCH (n)-[:AdminTo]->(c)
@@ -726,7 +726,7 @@ class CriticalAssets(object):
 			sheet, "Admins on Domain Controllers: {}", results)
 
 	def rdp_on_dc(self, sheet):
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 					WHERE g.objectsid ENDS WITH "-516"
 					MATCH (c:Computer)-[:MemberOf*1..]->(g)
 					OPTIONAL MATCH (n)-[:CanRDP]->(c)
@@ -750,7 +750,7 @@ class CriticalAssets(object):
 			sheet, "RDPers on Domain Controllers: {}", results)
 
 	def gpo_on_dc(self, sheet):
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 						WHERE g.objectsid ENDS WITH "-516"
 						MATCH (c:Computer)-[:MemberOf*1..]->(g)
 						OPTIONAL MATCH p1 = (g1:GPO)-[r1:GpLink {enforced:true}]->(container1)-[r2:Contains*1..]->(c)
@@ -782,7 +782,7 @@ class CriticalAssets(object):
 						UNWIND n.serviceprincipalnames AS spn 
 						MATCH (n) WHERE TOUPPER(spn) CONTAINS "EXCHANGEMDB"
 						WITH n as c
-						MATCH (c)-[:MemberOf*1..]->(g:Group {domain:{domain}})
+						MATCH (c)-[:MemberOf*1..]->(g:Group {domain:$domain})
 						WHERE g.name CONTAINS "EXCHANGE"
 						OPTIONAL MATCH (n)-[:AdminTo]->(c)
 						OPTIONAL MATCH (m)-[:MemberOf*1..]->(:Group)-[:AdminTo]->(c)
@@ -806,7 +806,7 @@ class CriticalAssets(object):
 						UNWIND n.serviceprincipalnames AS spn 
 						MATCH (n) WHERE TOUPPER(spn) CONTAINS "EXCHANGEMDB"
 						WITH n as c
-						MATCH (c)-[:MemberOf*1..]->(g:Group {domain:{domain}})
+						MATCH (c)-[:MemberOf*1..]->(g:Group {domain:$domain})
 						WHERE g.name CONTAINS "EXCHANGE"
 						OPTIONAL MATCH (n)-[:CanRDP]->(c)
 						OPTIONAL MATCH (m)-[:MemberOf*1..]->(:Group)-[:CanRDP]->(c)
@@ -830,7 +830,7 @@ class CriticalAssets(object):
 						UNWIND n.serviceprincipalnames AS spn 
 						MATCH (n) WHERE TOUPPER(spn) CONTAINS "EXCHANGEMDB"
 						WITH n as c
-						MATCH (c)-[:MemberOf*1..]->(g:Group {domain:{domain}})
+						MATCH (c)-[:MemberOf*1..]->(g:Group {domain:$domain})
 						WHERE g.name CONTAINS "EXCHANGE"
 						OPTIONAL MATCH p1 = (g1:GPO)-[r1:GpLink {enforced:true}]->(container1)-[r2:Contains*1..]->(c)
 						OPTIONAL MATCH p2 = (g2:GPO)-[r3:GpLink {enforced:false}]->(container2)-[r4:Contains*1..]->(c)
@@ -857,7 +857,7 @@ class CriticalAssets(object):
 			sheet, "Exchange Server GPO Controllers: {}", results)
 
 	def da_controllers(self, sheet):
-		list_query = """MATCH (DAUser)-[:MemberOf*1..]->(g:Group {domain:{domain}})
+		list_query = """MATCH (DAUser)-[:MemberOf*1..]->(g:Group {domain:$domain})
 						WHERE g.objectsid ENDS WITH "-512"
 						OPTIONAL MATCH (n)-[{isacl:true}]->(DAUser)
 						OPTIONAL MATCH (m)-[:MemberOf*1..]->(:Group)-[{isacl:true}]->(DAUser)
@@ -878,7 +878,7 @@ class CriticalAssets(object):
 			sheet, "Domain Admin Controllers: {}", results)
 
 	def da_sessions(self, sheet):
-		list_query = """MATCH (c:Computer)-[:HasSession]->()-[:MemberOf*1..]->(g:Group {domain:{domain}})
+		list_query = """MATCH (c:Computer)-[:HasSession]->()-[:MemberOf*1..]->(g:Group {domain:$domain})
 						WHERE g.objectsid ENDS WITH "-512"
 						RETURN DISTINCT(c.name)
 						ORDER BY c.name ASC
@@ -895,7 +895,7 @@ class CriticalAssets(object):
 			sheet, "Computers with DA Sessions: {}", results)
 
 	def gpo_on_da(self, sheet):
-		list_query = """MATCH (DAUser)-[:MemberOf*1..]->(g:Group {domain:{domain}})
+		list_query = """MATCH (DAUser)-[:MemberOf*1..]->(g:Group {domain:$domain})
 						WHERE g.objectsid ENDS WITH "-512"
 						OPTIONAL MATCH p1 = (g1:GPO)-[r1:GpLink {enforced:true}]->(container1)-[r2:Contains*1..]->(DAUser)
 						OPTIONAL MATCH p2 = (g2:GPO)-[r3:GpLink {enforced:false}]->(container2)-[r4:Contains*1..]->(DAUser)
@@ -921,7 +921,7 @@ class CriticalAssets(object):
 			sheet, "Domain Admin GPO Controllers: {}", results)
 
 	def da_equiv_controllers(self, sheet):
-		list_query = """MATCH (u:User)-[:MemberOf*1..]->(g:Group {domain:{domain},highvalue:true})
+		list_query = """MATCH (u:User)-[:MemberOf*1..]->(g:Group {domain:$domain,highvalue:true})
 						OPTIONAL MATCH (n)-[{isacl:true}]->(u)
 						OPTIONAL MATCH (m)-[:MemberOf*1..]->(:Group)-[{isacl:true}]->(u)
 						WITH COLLECT(n) + COLLECT(m) as tempVar
@@ -941,7 +941,7 @@ class CriticalAssets(object):
 			sheet, "High Value Object Controllers: {}", results)
 
 	def da_equiv_sessions(self, sheet):
-		list_query = """MATCH (c:Computer)-[:HasSession]->(u:User)-[:MemberOf*1..]->(g:Group {domain:{domain},highvalue:true})
+		list_query = """MATCH (c:Computer)-[:HasSession]->(u:User)-[:MemberOf*1..]->(g:Group {domain:$domain,highvalue:true})
 						RETURN DISTINCT(c.name)
 						ORDER BY c.name ASC
 						"""
@@ -957,7 +957,7 @@ class CriticalAssets(object):
 			sheet, "High Value User Sessions: {}", results)
 
 	def gpo_on_da_equiv(self, sheet):
-		list_query = """MATCH (u:User)-[:MemberOf*1..]->(g:Group {domain:{domain},highvalue:true})
+		list_query = """MATCH (u:User)-[:MemberOf*1..]->(g:Group {domain:$domain,highvalue:true})
 						OPTIONAL MATCH p1 = (g1:GPO)-[r1:GpLink {enforced:true}]->(container1)-[r2:Contains*1..]->(u)
 						OPTIONAL MATCH p2 = (g2:GPO)-[r3:GpLink {enforced:false}]->(container2)-[r4:Contains*1..]->(u)
 						WHERE NONE (x in NODES(p2) WHERE x.blocksinheritance = true AND x:OU AND NOT (g2)-->(x))
@@ -996,7 +996,7 @@ class CrossDomain(object):
 		c = sheet.cell(offset, self.col_count)
 		c.font = font
 		sheet.cell(offset, self.col_count, value=title.format(count))
-		for i in xrange(0, count):
+		for i in range(0, count):
 			sheet.cell(i+offset+1, self.col_count, value=results[i])
 		self.col_count += 1
 
@@ -1015,7 +1015,7 @@ class CrossDomain(object):
 			print("{} completed in {}s".format(f.__name__, timer() - s))
 	
 	def foreign_admins(self, sheet):
-		list_query = """MATCH (c:Computer {domain:{domain}})
+		list_query = """MATCH (c:Computer {domain:$domain})
 						OPTIONAL MATCH (n)-[:AdminTo]->(c)
 						WHERE (n:User OR n:Computer) AND NOT n.domain = c.domain
 						OPTIONAL MATCH (m)-[:MemberOf*1..]->(:Group)-[:AdminTo]->(c)
@@ -1038,11 +1038,11 @@ class CrossDomain(object):
 	
 	def foreign_gpo_controllers(self, sheet):
 		list_query = """MATCH (g:GPO)
-						WHERE SPLIT(g.name,'@')[1] = {domain}
+						WHERE SPLIT(g.name,'@')[1] = $domain
 						OPTIONAL MATCH (n)-[{isacl:true}]->(g)
-						WHERE (n:User OR n:Computer) AND NOT n.domain = {domain}
+						WHERE (n:User OR n:Computer) AND NOT n.domain = $domain
 						OPTIONAL MATCH (m)-[:MemberOf*1..]->(:Group)-[{isacl:true}]->(g)
-						WHERE (m:User OR m:Computer) AND NOT m.domain = {domain}
+						WHERE (m:User OR m:Computer) AND NOT m.domain = $domain
 						WITH COLLECT(n) + COLLECT(m) AS tempVar,g
 						UNWIND tempVar AS foreignGPOControllers
 						RETURN g.name,COUNT(DISTINCT(foreignGPOControllers))
@@ -1060,7 +1060,7 @@ class CrossDomain(object):
 			sheet, "GPOs with Foreign Controllers: {}", results)
 	
 	def foreign_user_controllers(self, sheet):
-		list_query = """MATCH (g:Group {domain:{domain}})
+		list_query = """MATCH (g:Group {domain:$domain})
 						OPTIONAL MATCH (n)-[{isacl:true}]->(g)
 						WHERE (n:User OR n:Computer) AND NOT n.domain = g.domain
 						OPTIONAL MATCH (m)-[:MemberOf*1..]->(:Group)-[{isacl:true}]->(g)
@@ -1086,7 +1086,7 @@ class MainMenu(cmd.Cmd):
 		self.m = Messages()
 		self.url = "bolt://localhost:7687"
 		self.username = "neo4j"
-		self.password = "BloodHound"
+		self.password = "passwd"
 		self.driver = None
 		self.connected = False
 		self.num_nodes = 500
@@ -1174,7 +1174,7 @@ class MainMenu(cmd.Cmd):
 		
 		print("Validating Selected Domain")
 		session = self.driver.session()
-		for result in session.run("MATCH (n {domain:{domain}}) RETURN COUNT(n)", domain=self.domain):
+		for result in session.run("MATCH (n {domain:$domain}) RETURN COUNT(n)", domain=self.domain):
 			if (int(result[0]) > 0):
 				print("Domain {domain} validated!".format(domain=self.domain))
 				self.domain_validated = True
@@ -1225,7 +1225,7 @@ class MainMenu(cmd.Cmd):
 	def create_workbook(self):
 		wb = Workbook()
 		ws = wb.active
-		ws.title = '{domain} Overview'.format(domain=self.domain)
+		ws.title = '$domain Overview'.format(domain=self.domain)
 		wb.create_sheet(title="Critical Assets")
 		wb.create_sheet(title="Low Hanging Fruit")
 		wb.create_sheet(title="Cross Domain Attacks")
